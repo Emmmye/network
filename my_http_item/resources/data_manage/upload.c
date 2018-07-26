@@ -55,7 +55,7 @@ int main()
         content_length -= i;
         new_content_length = content_length;
         char filename[32];
-        sprintf(filename,"%s.jpg",getenv("CONTENT_LENGTH"));
+        sprintf(filename,"/home/wh/31class/network/new_item/my_http_item/user_upload_picture/%s.jpg",getenv("CONTENT_LENGTH"));
         // int sum = 0;
         // char line[MAX*100];
         int fd = open(filename,O_RDWR | O_CREAT ,S_IRUSR | S_IRGRP |S_IROTH );
@@ -75,7 +75,7 @@ int main()
         close(fd);
         printf("<html>");
         printf("<body>");
-        printf("<body background=\"../../%s\">",filename);
+        printf("<body background=\"%s\">",filename);
         printf("</body>");
         printf("</body>");
         printf("</html>");

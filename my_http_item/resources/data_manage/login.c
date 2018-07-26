@@ -6,7 +6,9 @@
 #include "/home/wh/31class/network/my_http_item/lib/include/mysql.h"
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/sendfile.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #define MAX 1024
 void Login(int id, int passward)
@@ -42,11 +44,23 @@ void Login(int id, int passward)
         printf("</body>");
         return;
     }
+
     printf("<html>");
+    printf("<meta http-equiv=\"refresh\" content=\"1,url=../upload.html\">");
+    printf("<meta charset=\"utf-8\"><style>");
+    printf("body{text-align:center;margin-left:auto;margin-right:auto;}");
+    printf("</style>");
     printf("<body>");
-    printf("<a href=\"../upload.html\">跳转至上传页面</a>");
+    printf("<h1>登录成功!</h1></br>");
+    printf("即将为您跳转!</br>");
     printf("</body>");
     printf("</html>");
+
+    //     printf("<html>");
+    //     printf("<body>");
+    //     printf("<a href=\"../upload.html\">跳转至上传页面</a>");
+    //     printf("</body>");
+    //     printf("</html>");
 //     int fd = open("../upload.html",O_RDONLY);
 //     size_t s = read(fd,buf,sizeof(buf));
 //     buf[s] = '\0';

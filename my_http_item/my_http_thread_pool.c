@@ -435,6 +435,7 @@ end:
 
 int main(int argc, char* argv[])
 {
+    daemon(1,0);
     if(argc != 2)
         Usage();
     //创建服务端TCP套接字
