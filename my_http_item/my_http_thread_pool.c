@@ -197,6 +197,7 @@ void ExeCgi(int sock, char* method, char* query_string, char* path,int* errCode)
         }while(strcmp(line,"\n") != 0);
         if(content_lenth == -1)
         {
+            printf("200\n");
             *errCode = 404;
             return;
         }
@@ -220,9 +221,26 @@ void ExeCgi(int sock, char* method, char* query_string, char* path,int* errCode)
     int output[2]; 
     pipe(input); 
     pipe(output); 
+    //如果用户是用POST方法上传文件
+    //就需要在fork子进程之前把body里的空行之前的格式信息读完，只把数据部分交给子进程
+    //printf("Last content_lenth = %d\n",content_lenth);
+    //if(strcasecmp(method,"POST") == 0 && content_lenth >= 100){
+    //    int s = 0;
+    //    do{
+    //        if((s = Getline(sock,line,MAX)) <= 0)
+    //            break;
+    //        printf("%s",line);
+    //        content_lenth = content_lenth + 1 - s;
+    //    }while(strcmp(line,"\n") != 0);
+    //   // sprintf(content_length_env,"CONTENT_LENGTH=%d",content_lenth);
+    //   // putenv(content_length_env);
+    //    printf("After: content_lenth = %d \n",content_lenth);
+    //    //printf("sum = %d\n",i);
+    //}
     pid_t pid = fork(); 
     if(pid < 0)
     {
+        printf("fork error\n");
         *errCode = 404;
         return;
     }else if(pid == 0)
@@ -243,11 +261,13 @@ void ExeCgi(int sock, char* method, char* query_string, char* path,int* errCode)
         {
             sprintf(query_string_env,"QUERY_STRING=%s",query_string);
             putenv(query_string_env);
-        }else if(strcasecmp(method,"POST") == 0){
+        }else if(strcasecmp(method,"POST") == 0 ){
             sprintf(content_length_env,"CONTENT_LENGTH=%d",content_lenth);
             putenv(content_length_env);
-        }else
+        }
+        else
         {
+            printf("277\n");
             *errCode = 404;
             return;
         }
@@ -258,24 +278,27 @@ void ExeCgi(int sock, char* method, char* query_string, char* path,int* errCode)
     }else{
         close(input[0]);
         close(output[1]);
-
-        //如果方法是POST，父进程将参数写给子进程
         char ch;
-        if(strcasecmp(method, "POST") == 0)
+        //如果方法是POST，父进程将参数写给子进程
+        if(strcasecmp(method,"POST") == 0 )
         {
             int i = 0;
             for(;i < content_lenth;i++)
             {
                 read(sock,&ch,1);
                 write(input[1],&ch,1);
+                
             }
         }
 
         //父进程从管道中读出子进程执行结果，并响应给用户
+        int s = 0;
         while(read(output[0],&ch,1) > 0)
         {
+            s++;
             send(sock,&ch,1,0);
         }
+        printf("读取子进程返回数据:%d\n",s);
         waitpid(pid,NULL,0);
         close(input[1]);
         close(output[0]);
@@ -306,6 +329,7 @@ static void* DealRequest(void* arg)
     if(Getline(client_sock,line,MAX) == 0)
     {
         //最好将错误信息打印到日志中，这里不作处理
+        printf("330\n");
         errCode = 404;
         goto end;
     }
@@ -320,6 +344,7 @@ static void* DealRequest(void* arg)
     //目前只负责处理GET与POST方法，如果两个都不是，则直接响应错误信息
     if(strcasecmp(method,"GET") && strcasecmp(method,"POST"))
     {
+        printf("344\n");
         errCode = 404;
         goto end;
     }
