@@ -15,6 +15,7 @@
 ## 项目测试
 * 用户的登陆功能,文件上传和试卷检索功能都得以正常运行
 * 使用webbench工具对服务器基础功能进行压力测试  
+![测试结果](https://github.com/Emmmye/network/blob/master/0.1-version-http-server/user_upload_picture/test.png)
 
 ## 项目改进
 * 引入缓冲队列,在访问量过多时,减轻服务器压力
