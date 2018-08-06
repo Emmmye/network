@@ -1,5 +1,5 @@
 #include "thread_pool.h"
-
+#define pthread_num_max 10
 
 int PoolAddWorker (void *(*process) (void *arg), void *arg); 
 void* PoolRoutine(void *arg);    /*线程刚创建时执行的函数*/
@@ -14,17 +14,23 @@ void PoolInit(int max)
         return;
     pthread_mutex_init(&(pool->queue_lock),NULL);
     pthread_cond_init(&(pool->queue_ready),NULL);
+    pthread_mutex_init(&(pool->work_lock),NULL);
 
     pool->max_thread_num = max;
     pool->queue_size = 0;
 
     pool->shutdown = 0;
+    pool->thread_work_num = 0;
 
-    pool->threadid = (pthread_t*)malloc(max*sizeof(pthread_t));
+    //为线程池创建最大上限的空间，但是只初始化一定数量线程
+    pool->threadid = (pthread_t*)malloc(pthread_num_max*sizeof(pthread_t));
     if(pool->threadid == NULL)
         return;
     int i = 0;
-    for(; i < max; ++i)
+    if(pool->max_thread_num > pthread_num_max){
+        pool->max_thread_num = pthread_num_max;
+    }
+    for(; i < pool->max_thread_num; ++i)
     {
         pthread_create(&(pool->threadid[i]),NULL,PoolRoutine,NULL);
     }
@@ -38,10 +44,10 @@ int PoolDestroy()/*销毁线程池*/
 
     pool->shutdown = 1;
 
-    /*销毁线程池时,唤醒所有阻塞的进程*/
+    /*销毁线程池时,唤醒所有阻塞的线程*/
     pthread_cond_broadcast(&(pool->queue_ready));
 
-    /*阻塞等待进程退出,否则就成僵尸了*/
+    /*阻塞等待线程退出,否则就成僵尸了*/
     int i = 0;
     for(; i < pool->max_thread_num ; ++i)
     {
@@ -59,6 +65,7 @@ int PoolDestroy()/*销毁线程池*/
     }
 
     pthread_mutex_destroy(&(pool->queue_lock));
+    pthread_mutex_destroy(&(pool->work_lock));
     pthread_cond_destroy(&(pool->queue_ready));
 
     /*销毁后指针为空*/
@@ -97,9 +104,13 @@ int PoolAddWorker(void *(*Request)(void* arg), void* arg) /*往线程池中添�
     assert(pool->head != NULL);
 
     pthread_mutex_unlock(&(pool->queue_lock));
-    /*唤醒一个等待的线程*/
-    /*如果所有线程都在忙碌的话,这句话是没用的*/
     pthread_cond_signal (&(pool->queue_ready));  
+    /*唤醒一个等待的线程*/
+    /*如果所有线程都在忙碌的话，就创建一个新线程去执行，执行完后将其归还到线程池中*/
+    if(pool->thread_work_num >= pool->max_thread_num)
+    {
+        PoolExpand();
+    }
     return 0;
 }
 
@@ -136,24 +147,37 @@ void* PoolRoutine(void *arg)    /*线程刚创建时执行的函数*/
         pool->queue_size -= 1;
         Cthread_worker* worker = pool->head;
         pool->head = pool->head->next;
-        pthread_mutex_unlock (&(pool->queue_lock));
+        pthread_mutex_unlock(&(pool->queue_lock));
+        //一个线程从就绪态转为运行态时，要加锁修改此时工作数目
+        pthread_mutex_lock(&(pool->work_lock));
+        pool->thread_work_num++;
+        pthread_mutex_unlock(&(pool->work_lock));
 
         /*调用回调函数,执行任务*/
         (*(worker->Request))(worker->arg);
         free(worker);
         worker = NULL;
+        pthread_mutex_lock(&(pool->work_lock));
+        printf("申请锁成功\n");
+        pool->thread_work_num--;
+        pthread_mutex_unlock(&(pool->work_lock));
+        printf("释放锁成功\n");
     }
     pthread_exit(NULL);
     return NULL;
 }
 
 
-
-
-
-
-
-
+void PoolExpand() /*线程池扩容函数*/
+{
+    if(pool->threadid == NULL)
+        return;
+    if(pool->max_thread_num >= pthread_num_max){
+        return;
+    }
+    pthread_create(&(pool->threadid[pool->max_thread_num]),NULL,PoolRoutine,NULL);
+    pool->max_thread_num++;
+}
 
 //int main()
 //{
