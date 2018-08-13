@@ -19,12 +19,11 @@ typedef struct worker{
 typedef struct Cthread_pool{
     pthread_mutex_t queue_lock; /*互斥锁*/
     pthread_cond_t queue_ready; /*有新任务到来时，唤醒阻塞等待的空闲线程*/
-    pthread_mutex_t work_lock;  /*线程池工作数量修改时需要申请锁，线程安全*/
+    
     pthread_t *threadid;
-    int thread_work_num;        /*线程池当前正在工作的线程数量*/
     Cthread_worker *head;       /*任务队列的头指针*/
     int queue_size;             /*当前等待队列中的任务数目*/
-    int max_thread_num;         /*线程池中存在的线程数目*/
+    int max_thread_num;         /*线程池中允许的最大线程数目*/
     int shutdown;               /*是否销毁线程池*/
 }Cthread_pool;
 
@@ -36,5 +35,3 @@ int PoolDestroy();             /*销毁线程池*/
 int PoolAddWorker(void *(*Request)(void* arg), void* arg); /*往线程池中添加一个任务*/
 
 void* PoolRoutine(void *arg);    /*线程刚创建时执行的函数*/
-
-void PoolExpand(); /*线程池扩容函数*/
